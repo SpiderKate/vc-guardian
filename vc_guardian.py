@@ -3,14 +3,36 @@ from discord.ext import commands, app_commands
 from datetime import datetime
 import json
 import os
+from pathlib import Path
 
-TOKEN =
+
+def load_env_file(path=None):
+    env_path = Path(path or os.path.join(os.path.dirname(__file__), ".env"))
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+load_env_file()
+
+TOKEN = os.environ.get("DISCORD_TOKEN")
 
 VOICE_CHANNEL_ID = 1018135692926271488
 TEXT_CHANNEL_ID = 1018135692926271488
 
 # optional: track a specific person
-EMERGENCY_PING = "<@648240446367072266> <@1518752483458023487>"  # your ID or leave as None
+EMERGENCY_PING = os.environ.get("EMERGENCY_PING")  # your ID or leave as None
 
 STATE_FILE = "state.json"
 
@@ -205,4 +227,7 @@ async def on_ready():
 
 # ---------------- RUN ----------------
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    if not TOKEN:
+        raise RuntimeError("DISCORD_TOKEN is not set. Add it to .env or your environment.")
+    bot.run(TOKEN)

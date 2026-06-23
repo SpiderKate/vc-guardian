@@ -1,0 +1,10 @@
+# Environment files
+.env
+.env.*
+
+# Runtime state
+state.json
+
+# Python artifacts
+__pycache__/
+*.py[cod]
