@@ -29,8 +29,20 @@ load_env_file()
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
 
-DEFAULT_VOICE_CHANNEL_ID = int(os.environ.get("VOICE_CHANNEL_ID", 1018135692926271488))
-DEFAULT_TEXT_CHANNEL_ID = int(os.environ.get("TEXT_CHANNEL_ID", 1018135692926271488))
+
+def get_default_channel_id(env_name):
+    raw_value = os.environ.get(env_name)
+    if not raw_value:
+        return None
+
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        return None
+
+
+DEFAULT_VOICE_CHANNEL_ID = get_default_channel_id("VOICE_CHANNEL_ID")
+DEFAULT_TEXT_CHANNEL_ID = get_default_channel_id("TEXT_CHANNEL_ID")
 
 # optional: track a specific person
 DEFAULT_EMERGENCY_PING = os.environ.get("EMERGENCY_PING")  # your ID or leave as None
@@ -70,15 +82,18 @@ def build_emergency_ping(member_id):
     return f"<@{member_id}>"
 
 
-def get_sync_guild_id():
-    raw_value = os.environ.get("GUILD_ID") or os.environ.get("DISCORD_GUILD_ID")
-    if not raw_value:
-        return None
+async def sync_commands_to_guilds():
+    if not bot.guilds:
+        await tree.sync()
+        print("Slash commands synced globally")
+        return
 
-    try:
-        return int(raw_value)
-    except (TypeError, ValueError):
-        return None
+    for guild in bot.guilds:
+        try:
+            await tree.sync(guild=discord.Object(id=guild.id))
+            print(f"Slash commands synced for guild {guild.id}")
+        except Exception as e:
+            print(f"Slash command sync failed for guild {guild.id}: {e}")
 
 
 def load_state():
@@ -332,13 +347,7 @@ async def set_emergency_ping(interaction: discord.Interaction, member: discord.M
 @bot.event
 async def on_ready():
     try:
-        guild_id = get_sync_guild_id()
-        if guild_id:
-            await tree.sync(guild=discord.Object(id=guild_id))
-            print(f"Slash commands synced for guild {guild_id}")
-        else:
-            await tree.sync()
-            print("Slash commands synced globally")
+        await sync_commands_to_guilds()
     except Exception as e:
         print(f"Slash command sync failed: {e}")
     print(f"Logged in as {bot.user}")
