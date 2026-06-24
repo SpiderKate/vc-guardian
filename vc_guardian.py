@@ -159,51 +159,43 @@ async def on_voice_state_update(member, before, after):
 
 # ---------------- COMMANDS ----------------
 
-@tree.command(name="vc", description="Show current VC members")
-async def vc(interaction: discord.Interaction):
-    channel = bot.get_channel(VOICE_CHANNEL_ID)
-   
-    if not channel:
-        return await interaction.response.send_message("VC not found.", ephemeral=True)
-    else: 
-        members = get_real_members(channel)
-    names = "\n".join(m.display_name for m in members)
+async def _send_message(send_func, message, *, ephemeral=False):
+    if ephemeral:
+        await send_func(message, ephemeral=True)
+    else:
+        await send_func(message)
 
-    await interaction.response.send_message(
+
+async def _show_vc_status(send_func, *, ephemeral=False):
+    channel = bot.get_channel(VOICE_CHANNEL_ID)
+    if not channel:
+        return await _send_message(send_func, "VC not found.", ephemeral=ephemeral)
+
+    members = get_real_members(channel)
+    names = "\n".join(m.display_name for m in members)
+    await _send_message(
+        send_func,
         f"VC STATUS\nMembers: {len(members)}\n\n{names or 'Empty'}",
-        ephemeral=True
+        ephemeral=ephemeral,
     )
 
 
-@tree.command(name="streak", description="Show current streak")
-async def streak(interaction: discord.Interaction):
+async def _show_streak(send_func, *, ephemeral=False):
     update_longest_streak()
     save_state()
     if not state["streak_start"]:
-        return await interaction.response.send_message(
-            "No active streak.",
-            ephemeral=True
-        )
+        return await _send_message(send_func, "No active streak.", ephemeral=ephemeral)
 
     start = datetime.fromisoformat(state["streak_start"])
     duration = (datetime.now() - start).total_seconds()
-
-    await interaction.response.send_message(
-        f"Current streak: {format_duration(duration)}",
-        ephemeral=True
-    )
+    await _send_message(send_func, f"Current streak: {format_duration(duration)}", ephemeral=ephemeral)
 
 
-@tree.command(name="longest", description="Show longest streak")
-async def longest(interaction: discord.Interaction):
-    await interaction.response.send_message(
-        f"Longest streak: {format_duration(state['longest_streak'])}",
-        ephemeral=True
-    )
+async def _show_longest(send_func, *, ephemeral=False):
+    await _send_message(send_func, f"Longest streak: {format_duration(state['longest_streak'])}", ephemeral=ephemeral)
 
 
-@tree.command(name="stats", description="Full VC stats")
-async def stats(interaction: discord.Interaction):
+async def _show_stats(send_func, *, ephemeral=False):
     update_longest_streak()
     save_state()
     if state["streak_start"]:
@@ -212,12 +204,51 @@ async def stats(interaction: discord.Interaction):
     else:
         current = "None"
 
-    await interaction.response.send_message(
-        f"VC STATS\n"
-        f"Current streak: {current}\n"
-        f"Longest streak: {format_duration(state['longest_streak'])}",
-        ephemeral=True
+    await _send_message(
+        send_func,
+        f"VC STATS\nCurrent streak: {current}\nLongest streak: {format_duration(state['longest_streak'])}",
+        ephemeral=ephemeral,
     )
+
+
+@tree.command(name="vc", description="Show current VC members")
+async def vc(interaction: discord.Interaction):
+    await _show_vc_status(interaction.response.send_message, ephemeral=True)
+
+
+@bot.command(name="vc")
+async def vc_prefix(ctx):
+    await _show_vc_status(ctx.send)
+
+
+@tree.command(name="streak", description="Show current streak")
+async def streak(interaction: discord.Interaction):
+    await _show_streak(interaction.response.send_message, ephemeral=True)
+
+
+@bot.command(name="streak")
+async def streak_prefix(ctx):
+    await _show_streak(ctx.send)
+
+
+@tree.command(name="longest", description="Show longest streak")
+async def longest(interaction: discord.Interaction):
+    await _show_longest(interaction.response.send_message, ephemeral=True)
+
+
+@bot.command(name="longest")
+async def longest_prefix(ctx):
+    await _show_longest(ctx.send)
+
+
+@tree.command(name="stats", description="Full VC stats")
+async def stats(interaction: discord.Interaction):
+    await _show_stats(interaction.response.send_message, ephemeral=True)
+
+
+@bot.command(name="stats")
+async def stats_prefix(ctx):
+    await _show_stats(ctx.send)
 
 # ---------------- SYNC ----------------
 
