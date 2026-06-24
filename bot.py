@@ -58,4 +58,24 @@ async def on_ready():
     await tree.sync()
     print(f"Logged in as {bot.user}")
 
+
+@bot.event
+async def on_disconnect():
+    print("Disconnected from Discord.")
+
+
+import signal
+import sys
+
+
+def shutdown_handler(signum, frame):
+    print("Shutting down bot...")
+    if not bot.is_closed():
+        bot.loop.create_task(bot.close())
+    raise SystemExit(0)
+
+
+signal.signal(signal.SIGINT, shutdown_handler)
+signal.signal(signal.SIGTERM, shutdown_handler)
+
 bot.run(TOKEN)
