@@ -51,11 +51,36 @@ def guild_cfg(guild_id):
 @tree.command(name="settings", description="Show configuration")
 async def settings(interaction: discord.Interaction):
     cfg = guild_cfg(interaction.guild_id)
-    await interaction.response.send_message(str(cfg), ephemeral=True)
+    try:
+        await interaction.response.send_message(str(cfg), ephemeral=True)
+    except discord.HTTPException:
+        await interaction.followup.send(str(cfg), ephemeral=True)
+
+
+@tree.command(name="ping", description="Test slash command")
+async def ping(interaction: discord.Interaction):
+    try:
+        await interaction.response.send_message("Pong!", ephemeral=True)
+    except discord.HTTPException:
+        await interaction.followup.send("Pong!", ephemeral=True)
+
+
+async def sync_commands():
+    try:
+        if bot.guilds:
+            for guild in bot.guilds:
+                await tree.sync(guild=discord.Object(id=guild.id))
+                print(f"Synced slash commands for guild {guild.id}")
+        else:
+            await tree.sync()
+            print("Synced slash commands globally")
+    except Exception as e:
+        print(f"Slash command sync failed: {e}")
+
 
 @bot.event
 async def on_ready():
-    await tree.sync()
+    await sync_commands()
     print(f"Logged in as {bot.user}")
 
 
