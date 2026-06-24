@@ -1,10 +1,25 @@
 {
-    "streak_start": null,
-    "longest_streak": 3977,
-    "last_count": 0,
-    "warned_2": false,
-    "warned_1": false,
-    "voice_channel_id": null,
-    "text_channel_id": null,
-    "emergency_ping": null
+    "guilds": {
+        "123456789012345678": {
+            "voice_channel_id": 111,
+            "text_channel_id": 222,
+            "emergency_ping": 333,
+            "streak_start": null,
+            "longest_streak": 0,
+            "warned_1": false,
+            "warned_2": false,
+            "last_count": 0
+        },
+
+        "987654321098765432": {
+            "voice_channel_id": 444,
+            "text_channel_id": 555,
+            "emergency_ping": 666,
+            "streak_start": null,
+            "longest_streak": 0,
+            "warned_1": false,
+            "warned_2": false,
+            "last_count": 0
+        }
+    }
 }
