@@ -1,5 +1,6 @@
 import discord
-from discord.ext import commands, app_commands
+from discord import app_commands
+from discord.ext import commands
 from datetime import datetime
 import json
 import os
@@ -222,7 +223,10 @@ async def stats(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    await tree.sync()
+    try:
+        await tree.sync()
+    except Exception as e:
+        print(f"Slash command sync failed: {e}")
     print(f"Logged in as {bot.user}")
 
 # ---------------- RUN ----------------
