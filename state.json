@@ -3,5 +3,8 @@
     "longest_streak": 3977,
     "last_count": 0,
     "warned_2": false,
-    "warned_1": false
+    "warned_1": false,
+    "voice_channel_id": null,
+    "text_channel_id": null,
+    "emergency_ping": null
 }

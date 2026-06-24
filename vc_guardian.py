@@ -29,28 +29,62 @@ load_env_file()
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
 
-VOICE_CHANNEL_ID = 1018135692926271488
-TEXT_CHANNEL_ID = 1018135692926271488
+DEFAULT_VOICE_CHANNEL_ID = int(os.environ.get("VOICE_CHANNEL_ID", 1018135692926271488))
+DEFAULT_TEXT_CHANNEL_ID = int(os.environ.get("TEXT_CHANNEL_ID", 1018135692926271488))
 
 # optional: track a specific person
-EMERGENCY_PING = os.environ.get("EMERGENCY_PING")  # your ID or leave as None
+DEFAULT_EMERGENCY_PING = os.environ.get("EMERGENCY_PING")  # your ID or leave as None
 
 STATE_FILE = "state.json"
 
 # ---------------- STATE ----------------
 
+def get_state_defaults():
+    return {
+        "streak_start": None,
+        "longest_streak": 0,
+        "last_count": 0,
+        "warned_2": False,
+        "warned_1": False,
+        "voice_channel_id": None,
+        "text_channel_id": None,
+        "emergency_ping": None,
+    }
+
+
+def normalize_id(value, fallback):
+    if value in (None, "", "None"):
+        return fallback
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def build_emergency_ping(member_id):
+    if not member_id:
+        return ""
+    if isinstance(member_id, str) and member_id.startswith("<@") and member_id.endswith(">"):
+        return member_id
+    return f"<@{member_id}>"
+
+
 def load_state():
+    defaults = get_state_defaults()
+
     if not os.path.exists(STATE_FILE):
-        return {
-            "streak_start": None,
-            "longest_streak": 0,
-            "last_count": 0,
-            "warned_2": False,
-            "warned_1": False
-        }
+        return defaults
 
     with open(STATE_FILE, "r") as f:
-        return json.load(f)
+        loaded = json.load(f)
+
+    merged = defaults.copy()
+    for key, value in loaded.items():
+        if key in defaults:
+            merged[key] = value
+
+    return merged
 
 
 def save_state():
@@ -114,8 +148,12 @@ async def on_voice_state_update(member, before, after):
     if member.bot:
         return
 
-    channel = bot.get_channel(VOICE_CHANNEL_ID)
-    text_channel = bot.get_channel(TEXT_CHANNEL_ID)
+    voice_channel_id = normalize_id(state.get("voice_channel_id"), DEFAULT_VOICE_CHANNEL_ID)
+    text_channel_id = normalize_id(state.get("text_channel_id"), DEFAULT_TEXT_CHANNEL_ID)
+    emergency_ping = build_emergency_ping(state.get("emergency_ping") or DEFAULT_EMERGENCY_PING)
+
+    channel = bot.get_channel(voice_channel_id)
+    text_channel = bot.get_channel(text_channel_id)
 
     if not channel or not text_channel:
         return
@@ -141,7 +179,7 @@ async def on_voice_state_update(member, before, after):
 
     elif count == 1 and not state["warned_1"]:
         state["warned_1"] = True
-        await text_channel.send(f"⚠⚠ Only 1 person remains in VC! \n{EMERGENCY_PING}")
+        await text_channel.send(f"⚠⚠ Only 1 person remains in VC! \n{emergency_ping}")
 
     # VC empty
     elif count == 0:
@@ -167,7 +205,8 @@ async def _send_message(send_func, message, *, ephemeral=False):
 
 
 async def _show_vc_status(send_func, *, ephemeral=False):
-    channel = bot.get_channel(VOICE_CHANNEL_ID)
+    voice_channel_id = normalize_id(state.get("voice_channel_id"), DEFAULT_VOICE_CHANNEL_ID)
+    channel = bot.get_channel(voice_channel_id)
     if not channel:
         return await _send_message(send_func, "VC not found.", ephemeral=ephemeral)
 
@@ -249,6 +288,33 @@ async def stats(interaction: discord.Interaction):
 @bot.command(name="stats")
 async def stats_prefix(ctx):
     await _show_stats(ctx.send)
+
+
+@tree.command(name="setvoicechannel", description="Set the voice channel to monitor")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(channel="The voice channel to monitor")
+async def set_voice_channel(interaction: discord.Interaction, channel: discord.VoiceChannel):
+    state["voice_channel_id"] = channel.id
+    save_state()
+    await interaction.response.send_message(f"Voice channel set to {channel.mention}.", ephemeral=True)
+
+
+@tree.command(name="settextchannel", description="Set the text channel for notifications")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(channel="The text channel for notifications")
+async def set_text_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    state["text_channel_id"] = channel.id
+    save_state()
+    await interaction.response.send_message(f"Notifications will be sent to {channel.mention}.", ephemeral=True)
+
+
+@tree.command(name="setemergencyping", description="Set the emergency ping target")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(member="The server member to ping when only one person remains")
+async def set_emergency_ping(interaction: discord.Interaction, member: discord.Member):
+    state["emergency_ping"] = member.id
+    save_state()
+    await interaction.response.send_message(f"Emergency ping set to {member.mention}.", ephemeral=True)
 
 # ---------------- SYNC ----------------
 
