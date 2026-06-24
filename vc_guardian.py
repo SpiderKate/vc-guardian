@@ -70,6 +70,17 @@ def build_emergency_ping(member_id):
     return f"<@{member_id}>"
 
 
+def get_sync_guild_id():
+    raw_value = os.environ.get("GUILD_ID") or os.environ.get("DISCORD_GUILD_ID")
+    if not raw_value:
+        return None
+
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        return None
+
+
 def load_state():
     defaults = get_state_defaults()
 
@@ -321,7 +332,13 @@ async def set_emergency_ping(interaction: discord.Interaction, member: discord.M
 @bot.event
 async def on_ready():
     try:
-        await tree.sync()
+        guild_id = get_sync_guild_id()
+        if guild_id:
+            await tree.sync(guild=discord.Object(id=guild_id))
+            print(f"Slash commands synced for guild {guild_id}")
+        else:
+            await tree.sync()
+            print("Slash commands synced globally")
     except Exception as e:
         print(f"Slash command sync failed: {e}")
     print(f"Logged in as {bot.user}")
